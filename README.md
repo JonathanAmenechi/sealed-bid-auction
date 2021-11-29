@@ -1,4 +1,5 @@
 ## Sealed bid auction contract for NFTs
+![Github Actions](https://github.com/JonathanAmenechi/sealed-bid-auction/workflows/Tests/badge.svg)
 
 Note: WIP
 
