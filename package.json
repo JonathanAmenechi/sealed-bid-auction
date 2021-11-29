@@ -1,6 +1,6 @@
 {
   "name": "sealed-bid-auction",
-  "description": "Sealed bid auction using commit-reveal schemes",
+  "description": "Sealed bid auction for an NFT",
   "version": "1.0.0",
   "author": {
     "name": "Jonathan Amenechi",
