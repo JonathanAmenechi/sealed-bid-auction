@@ -12,7 +12,7 @@ The contract maintains custody of the Asset until the auction is Finalized, or C
 It works using a commit-reveal scheme in which bidders commit hashed bids in the COMMIT phase and reveal their bids during the REVEAL phase. 
 
 The Auction owner has the following privileges:
-* Can start the auction with `startCommitPhase`
+* Can start the auction with `startAuction`
 * Can cancel the auction with `cancelAuction` if the auction hasn't started or the reserve price isn't met
 
 This contract intends to be as trustless as possible:

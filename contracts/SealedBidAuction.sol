@@ -3,8 +3,8 @@
 pragma solidity ^0.8.0;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { ERC20TransferHelper } from "./libraries/ERC20TransferHelper.sol";
 import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
 
@@ -19,7 +19,7 @@ import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721H
  * and reveal their bids during the REVEAL phase. 
  * 
  * The Auction owner has the following privileges:
- * 1) Can start the auction with `startCommitPhase`
+ * 1) Can start the auction with `startAuction`
  * 2) Can cancel the auction and withdraw the asset if the auction hasn't started or the reserve price isn't met
  *
  * Apart from the above, this contract intends to be as trustless as possible:
@@ -28,12 +28,6 @@ import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721H
  */
 
 contract SealedBidAuction is ERC721Holder, Ownable {
-
-    // Structs
-    struct Bid {
-        address bidder;
-        uint256 bidAmount; 
-    }
 
     enum AuctionPhase {
         INACTIVE, 
@@ -45,15 +39,13 @@ contract SealedBidAuction is ERC721Holder, Ownable {
     }
 
     // Events
-    // TODO: could use PhaseChanged as a general event, but not very useful to log readers
-    // event PhaseChanged(address indexed caller, AuctionPhase oldPhase, AuctionPhase newPhase);
-    event CommitPhaseStarted(address indexed caller);
-    event RevealPhaseStarted(address indexed caller);
+    
+    event NewHighestBid(address highestBidder, uint256 highestBid, address oldHighestBidder, uint256 oldHighestBid);
     event Finalized(address indexed caller, address indexed winner, uint256 indexed winningBid);
     event Cancelled(address indexed caller);
 
     // Immutable Auction Parameters
-    IERC20 public immutable bidToken;
+    address public immutable bidToken;
 
     address public immutable asset;
     uint256 public immutable assetID;
@@ -64,7 +56,8 @@ contract SealedBidAuction is ERC721Holder, Ownable {
 
     mapping(bytes32 => bool) public commitments;
 
-    Bid public highestBid;
+    address public highestBidder = address(0);
+    uint256 public highestBid = 0;
 
     uint256 public commitPhaseEnd;
     uint256 public revealPhaseEnd;
@@ -74,14 +67,14 @@ contract SealedBidAuction is ERC721Holder, Ownable {
 
     constructor(
         address admin,
-        address bidTokenAddress, 
+        address bidToken_, 
         address asset_, 
         uint256 assetID_,
         uint256 commitPhaseDuration_, 
         uint256 revealPhaseDuration_, 
         uint256 reservePrice_
     ) ERC721Holder() Ownable() {
-        bidToken = IERC20(bidTokenAddress);
+        bidToken = bidToken_;
         asset = asset_;
         assetID = assetID_;
         commitPhaseDuration = commitPhaseDuration_;
@@ -91,26 +84,25 @@ contract SealedBidAuction is ERC721Holder, Ownable {
     }
 
     /**
-    * Starts the commit phase of an auction
-    * Only the Auction owner can start the commit phase 
+    * Starts an auction
+    * Moves the auction to the COMMIT phase
+    * Only the Auction owner can start the auction
     */
-    function startCommitPhase() public onlyOwner {
+    function startAuction() public onlyOwner {
         require(currentPhase == AuctionPhase.INACTIVE, "Auction::auction already in progress");
         commitPhaseEnd = block.timestamp + commitPhaseDuration;
         currentPhase = AuctionPhase.COMMIT;
-        emit CommitPhaseStarted(msg.sender);
     }
 
     /**
-    * Starts the reveal phase of the auction. Can be called by anyone
+    * Starts the reveal phase of the auction
     */
     function startRevealPhase() public {
         require(currentPhase == AuctionPhase.COMMIT, "Auction::must be in commit phase");
-        require(block.timestamp >= commitPhaseEnd, "Auction::commit phase has not ended");
+        require(block.timestamp > commitPhaseEnd, "Auction::commit phase has not ended");
         
         revealPhaseEnd = block.timestamp + revealPhaseDuration;
         currentPhase = AuctionPhase.REVEAL;
-        emit RevealPhaseStarted(msg.sender);
     }
 
     /**
@@ -123,15 +115,48 @@ contract SealedBidAuction is ERC721Holder, Ownable {
     } 
 
     function reveal(uint256 bid, bytes32 secret) public {
-        // check in reveal phase
-        // check in reveal period
-        // create commitment
-        // check commitment exists
-        // check >= reserve price
-        // check > current top bid
-        // if strictly > top bid, 
-        //     check token approval on caller with address(this) as spender and token balance on caller
-        //     safe transfer from token to address(this)
+        require(currentPhase == AuctionPhase.REVEAL, "Auction::must be in reveal phase");
+        require(block.timestamp <= revealPhaseEnd, "Auction::reveal phase has ended");
+
+        bytes32 commitment = createCommitment(msg.sender, bid, secret);
+
+        require(commitments[commitment], "Auction::nonexistent commitment");
+        require(bid >= reservePrice, "Auction::unmet reserve price");
+
+        address oldHighestBidder;
+        uint256 oldHighestBid;
+
+        // If first bid, update the highest bid and bidder
+        if(highestBidder == address(0)) {
+            oldHighestBidder = address(0);
+            oldHighestBid = 0;
+            
+            updateHighestBid(msg.sender, bid);
+            emit NewHighestBid(msg.sender, bid, oldHighestBidder, oldHighestBid);
+            return;
+        }
+        
+        // If current bid strictly > highest bid 
+        if (bid > highestBid) {
+            oldHighestBidder = highestBidder;
+            oldHighestBid = highestBid;
+            
+            // Refund previous highest bidder
+            refundHighestBidder();
+            
+            // Transfer bid token to the auction contract 
+            ERC20TransferHelper.safeTransferFrom(bidToken, msg.sender, address(this), bid);
+
+            // Update highest bidder and highest bid
+            updateHighestBid(msg.sender, bid);
+
+            emit NewHighestBid(msg.sender, bid, oldHighestBidder, oldHighestBid);
+            return;
+        }
+    }
+
+    function createCommitment(address bidder, uint256 bid, bytes32 secret) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(bidder, bid, secret));
     }
 
     /**
@@ -140,13 +165,24 @@ contract SealedBidAuction is ERC721Holder, Ownable {
     * Can be called by anyone
     */
     function finalize() public {
-        //Checks
-        // Check in REVEAL phase
-        // check after reveal period
-        // if highest bid: transfer asset to highest bidder, transfer highest bid tokens to owner
-        // set AuctionPhase to Finalized
-        // reserve price not reached
-        // set AuctionPhase to RESERVE_NOT_MET
+        require(currentPhase == AuctionPhase.REVEAL, "Auction::must be in reveal phase");
+        require(block.timestamp > revealPhaseEnd, "Auction::reveal phase has not ended");
+        
+        if(highestBid >= reservePrice) {
+            // Transfer auctionedAsset to the highest bidder
+            IERC721(asset).safeTransferFrom(address(this), highestBidder, assetID);
+
+            // transfer the bidTokens to the Auction owner
+            ERC20TransferHelper.safeTransferFrom(bidToken, address(this), owner(), highestBid);
+
+            currentPhase = AuctionPhase.FINALIZED;
+            
+            emit Finalized(msg.sender, highestBidder, highestBid);
+        } else {
+
+            // Reserve price not met
+            currentPhase = AuctionPhase.RESERVE_NOT_MET;
+        }
     }
 
     /**
@@ -155,7 +191,9 @@ contract SealedBidAuction is ERC721Holder, Ownable {
     */
     function cancelAuction() public onlyOwner {
         require(
-            currentPhase == AuctionPhase.INACTIVE || currentPhase == AuctionPhase.RESERVE_NOT_MET, 
+            currentPhase == AuctionPhase.INACTIVE 
+            ||
+            currentPhase == AuctionPhase.RESERVE_NOT_MET, 
             "Auction::auction in progress"
         );
         
@@ -164,5 +202,14 @@ contract SealedBidAuction is ERC721Holder, Ownable {
         
         // transfer ERC721 to owner
         IERC721(asset).safeTransferFrom(address(this), owner(), assetID);
+    }
+
+    function updateHighestBid(address bidder, uint256 bidAmount) internal {
+        highestBidder = bidder;
+        highestBid = bidAmount;
+    }
+
+    function refundHighestBidder() internal {
+        ERC20TransferHelper.safeTransferFrom(bidToken, address(this), highestBidder, highestBid);
     }
 }
