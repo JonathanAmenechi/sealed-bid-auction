@@ -47,8 +47,8 @@ contract SealedBidAuction is ERC721Holder, Ownable {
     // Immutable Auction Parameters
     address public immutable bidToken;
 
-    address public immutable asset;
-    uint256 public immutable assetID;
+    address public immutable auctionAsset;
+    uint256 public immutable auctionAssetID;
 
     uint256 public immutable commitPhaseDuration;
     uint256 public immutable revealPhaseDuration;
@@ -75,8 +75,8 @@ contract SealedBidAuction is ERC721Holder, Ownable {
         uint256 reservePrice_
     ) ERC721Holder() Ownable() {
         bidToken = bidToken_;
-        asset = asset_;
-        assetID = assetID_;
+        auctionAsset = asset_;
+        auctionAssetID = assetID_;
         commitPhaseDuration = commitPhaseDuration_;
         revealPhaseDuration = revealPhaseDuration_;
         reservePrice = reservePrice_;
@@ -169,8 +169,8 @@ contract SealedBidAuction is ERC721Holder, Ownable {
         require(block.timestamp > revealPhaseEnd, "Auction::reveal phase has not ended");
         
         if(highestBid >= reservePrice) {
-            // Transfer auctionedAsset to the highest bidder
-            IERC721(asset).safeTransferFrom(address(this), highestBidder, assetID);
+            // Transfer auctionAsset to the highest bidder
+            IERC721(auctionAsset).safeTransferFrom(address(this), highestBidder, auctionAssetID);
 
             // transfer the bidTokens to the Auction owner
             ERC20TransferHelper.safeTransferFrom(bidToken, address(this), owner(), highestBid);
@@ -200,8 +200,8 @@ contract SealedBidAuction is ERC721Holder, Ownable {
         emit Cancelled(msg.sender);
         currentPhase = AuctionPhase.CANCELED;
         
-        // transfer ERC721 to owner
-        IERC721(asset).safeTransferFrom(address(this), owner(), assetID);
+        // transfer auctionAsset to owner
+        IERC721(auctionAsset).safeTransferFrom(address(this), owner(), auctionAssetID);
     }
 
     function updateHighestBid(address bidder, uint256 bidAmount) internal {

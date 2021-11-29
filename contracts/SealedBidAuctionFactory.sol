@@ -7,6 +7,7 @@ import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import { SealedBidAuction } from "./SealedBidAuction.sol";
 
+
 /**
 * SealedBidAuctionFactory 
 */
@@ -21,15 +22,15 @@ contract SealedBidAuctionFactory is ERC721Holder {
 
     function deployAuction(
         address bidToken, 
-        address auctionedAsset, 
-        uint256 auctionedAssetID, 
+        address auctionAsset, 
+        uint256 auctionAssetID, 
         uint256 commitDuration, 
         uint256 revealDuration, 
         uint256 reservePrice
     ) external {
         // Initial checks
         require(bidToken != address(0), "AuctionFactory::bidToken must not be zero address");
-        require(auctionedAsset != address(0), "AuctionFactory::auctionedAsset must not be zero address");
+        require(auctionAsset != address(0), "AuctionFactory::auctionAsset must not be zero address");
         
         require(commitDuration >= MIN_DURATION, "AuctionFactory::commitDuration below min");
         require(revealDuration >= MIN_DURATION, "AuctionFactory::revealDuration below min");
@@ -40,19 +41,19 @@ contract SealedBidAuctionFactory is ERC721Holder {
         bytes32 salt = generateSalt(
                 msg.sender, 
                 bidToken, 
-                auctionedAsset, 
-                auctionedAssetID, 
+                auctionAsset, 
+                auctionAssetID, 
                 commitDuration, 
                 revealDuration, 
                 reservePrice,
                 nonce
         );
-
+        
         bytes memory creationCode = generateCreationCode(
             msg.sender, 
             bidToken, 
-            auctionedAsset, 
-            auctionedAssetID, 
+            auctionAsset, 
+            auctionAssetID, 
             commitDuration, 
             revealDuration, 
             reservePrice
@@ -60,8 +61,8 @@ contract SealedBidAuctionFactory is ERC721Holder {
         address auction =  Create2.deploy(0, salt, creationCode);
         nonce = nonce + 1;
 
-        // Transfer auctionedAsset to the Auction
-        IERC721(auctionedAsset).safeTransferFrom(msg.sender, auction, auctionedAssetID);
+        // Transfer auctionAsset to the Auction
+        IERC721(auctionAsset).safeTransferFrom(msg.sender, auction, auctionAssetID);
         
         emit AuctionDeployed(msg.sender, auction);
     }
@@ -69,8 +70,8 @@ contract SealedBidAuctionFactory is ERC721Holder {
     function generateCreationCode(
         address caller,
         address bidToken, 
-        address auctionedAsset, 
-        uint256 auctionedAssetID, 
+        address auctionAsset, 
+        uint256 auctionAssetID, 
         uint256 commitDuration, 
         uint256 revealDuration, 
         uint256 reservePrice
@@ -80,8 +81,8 @@ contract SealedBidAuctionFactory is ERC721Holder {
             abi.encode(
                 caller, 
                 bidToken, 
-                auctionedAsset, 
-                auctionedAssetID, 
+                auctionAsset, 
+                auctionAssetID, 
                 commitDuration, 
                 revealDuration, 
                 reservePrice
@@ -92,8 +93,8 @@ contract SealedBidAuctionFactory is ERC721Holder {
     function generateSalt(
         address caller,
         address bidToken, 
-        address auctionedAsset, 
-        uint256 auctionedAssetID, 
+        address auctionAsset, 
+        uint256 auctionAssetID, 
         uint256 commitDuration, 
         uint256 revealDuration, 
         uint256 reservePrice,
@@ -103,8 +104,8 @@ contract SealedBidAuctionFactory is ERC721Holder {
             abi.encodePacked(
                 caller, 
                 bidToken, 
-                auctionedAsset, 
-                auctionedAssetID, 
+                auctionAsset, 
+                auctionAssetID, 
                 commitDuration, 
                 revealDuration, 
                 reservePrice,
@@ -117,8 +118,8 @@ contract SealedBidAuctionFactory is ERC721Holder {
         address deployer,
         address caller,
         address bidToken, 
-        address auctionedAsset, 
-        uint256 auctionedAssetID, 
+        address auctionAsset, 
+        uint256 auctionAssetID, 
         uint256 commitDuration, 
         uint256 revealDuration, 
         uint256 reservePrice,
@@ -127,8 +128,8 @@ contract SealedBidAuctionFactory is ERC721Holder {
         bytes32 salt = generateSalt(
             caller, 
             bidToken, 
-            auctionedAsset, 
-            auctionedAssetID, 
+            auctionAsset, 
+            auctionAssetID, 
             commitDuration, 
             revealDuration, 
             reservePrice,
@@ -138,8 +139,8 @@ contract SealedBidAuctionFactory is ERC721Holder {
         bytes memory creationCode = generateCreationCode(
             caller, 
             bidToken, 
-            auctionedAsset, 
-            auctionedAssetID, 
+            auctionAsset, 
+            auctionAssetID, 
             commitDuration, 
             revealDuration, 
             reservePrice
