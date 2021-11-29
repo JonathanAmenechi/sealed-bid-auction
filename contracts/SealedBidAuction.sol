@@ -194,7 +194,7 @@ contract SealedBidAuction is ERC721Holder, Ownable {
             currentPhase == AuctionPhase.INACTIVE 
             ||
             currentPhase == AuctionPhase.RESERVE_NOT_MET, 
-            "Auction::auction in progress"
+            "Auction::auction cannot be cancelled"
         );
         
         emit Cancelled(msg.sender);
