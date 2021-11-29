@@ -28,7 +28,7 @@ jobs:
         run: yarn typechain
         working-directory: ./
 
-      - name: Contract Tests
+      - name: Tests
         working-directory: ./
         run: yarn test
 
