@@ -1,4 +1,5 @@
 import "@nomiclabs/hardhat-waffle";
+import "hardhat-deploy";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
@@ -49,8 +50,7 @@ const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
   gasReporter: {
     currency: "USD",
-    enabled: process.env.REPORT_GAS ? true : false,
-    excludeContracts: [],
+    excludeContracts: ["TestToken", "Test721"],
     src: "./contracts",
   },
   networks: {
@@ -59,6 +59,7 @@ const config: HardhatUserConfig = {
         mnemonic,
       },
       chainId: chainIds.hardhat,
+      saveDeployments: false,
     },
     goerli: getChainConfig("goerli"),
     kovan: getChainConfig("kovan"),
