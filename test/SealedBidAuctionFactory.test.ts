@@ -9,38 +9,31 @@ import { TestToken, Test721, SealedBidAuctionFactory, SealedBidAuction } from ".
 const setup = deployments.createFixture(async () => {
     const signers = await hre.ethers.getSigners();
     const deployer = signers[0];
-    const signerA = signers[1];
-    const signerB = signers[2];
 
     const bidToken: TestToken = <TestToken>await deploy("TestToken", 
-    {
-        from: deployer.address,
-        args: []
-    });
+        { from: deployer.address, args: [] }
+    );
 
-    const test721: Test721 = <Test721>await deploy("Test721", 
-    {
-        from: deployer.address,
-        args: []
-    });
+    const test721: Test721 = <Test721>await deploy("Test721",
+        { from: deployer.address, args: [] }
+    );
 
     // Mint test tokens
     await( await bidToken.mint(deployer.address, ethers.utils.parseEther("1000"))).wait();
     await( await test721.mint(deployer.address, 0)).wait();
 
+    // Deploy factory
     const factory: SealedBidAuctionFactory = <SealedBidAuctionFactory>await deploy("SealedBidAuctionFactory", 
     {
         from: deployer.address,
         args: []
     });
 
-    // approve test tokens on factory
+    // approve test 721 on factory
     await(await test721.approve(factory.address, 0)).wait();
 
     return {
         deployer,
-        signerA,
-        signerB,
         bidToken,
         test721,
         factory
