@@ -1,4 +1,4 @@
-name: CI
+name: Tests
 
 on:
   push:
@@ -20,9 +20,19 @@ jobs:
         with:
           node-version: 16
 
-      - name: Install Dependencies
+      - name: Dependencies
         run: yarn
+        working-directory: ./
 
-      - name: Run Contract Tests
+      - name: Typechain
+        run: yarn typechain
+        working-directory: ./
+
+      - name: Tests
         working-directory: ./
         run: yarn test
+
+env:
+    MNEMONIC: "we need a mnemonic phrase so that continuous integration will not fail"
+    INFURA_API_KEY: "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+    MATICVIGIL_API_KEY: "zzzzzzzzzzzzzzzzzzzzzzzzzzzz"
