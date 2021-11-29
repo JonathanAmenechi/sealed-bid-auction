@@ -20,10 +20,15 @@ jobs:
         with:
           node-version: 16
 
-      - name: Install Dependencies
+      - name: Dependencies
         run: yarn
+        working-directory: ./
 
-      - name: Run Contract Tests
+      - name: Typechain
+        run: yarn typechain
+        working-directory: ./
+
+      - name: Contract Tests
         working-directory: ./
         run: yarn test
 
