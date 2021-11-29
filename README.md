@@ -7,9 +7,10 @@ Note: WIP
 
 Implements a sealed bid auction contract and factory for a single ERC721 Asset. Inspired by the ENS RegistrarController.
 
+Works using a commit-reveal scheme in which bidders commit hashed bids in the COMMIT phase and reveal their bids during the REVEAL phase.
+
 The contract maintains custody of the Asset until the auction is Finalized, or Cancelled.
  
-It works using a commit-reveal scheme in which bidders commit hashed bids in the COMMIT phase and reveal their bids during the REVEAL phase. 
 
 The Auction owner has the following privileges:
 * Can start the auction with `startAuction`
