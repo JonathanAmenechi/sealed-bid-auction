@@ -22,3 +22,8 @@ export async function deploy<T extends Contract>(
 
     return (connect ? instance.connect(connect) : instance) as T;
 }
+
+export async function hardhatFastForward(secondsToIncrease: number): Promise<void> {
+    await ethers.provider.send("evm_increaseTime", [secondsToIncrease]);
+    await ethers.provider.send("evm_mine", []);
+}

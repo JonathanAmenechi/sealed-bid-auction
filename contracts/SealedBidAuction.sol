@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import { ERC20TransferHelper } from "./libraries/ERC20TransferHelper.sol";
 import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+import { TransferHelper } from "./libraries/TransferHelper.sol";
 
 
 /**
@@ -127,7 +127,12 @@ contract SealedBidAuction is ERC721Holder, Ownable {
             oldHighestBidder = address(0);
             oldHighestBid = 0;
             
+            // Transfer bid token from the bidder to the auction contract 
+            TransferHelper.safeTransferFrom(bidToken, msg.sender, address(this), bid);
+
+            // Update highest bidder and highest bid
             updateHighestBid(msg.sender, bid);
+
             emit NewHighestBid(msg.sender, bid, oldHighestBidder, oldHighestBid);
             return;
         }
@@ -141,7 +146,7 @@ contract SealedBidAuction is ERC721Holder, Ownable {
             refundHighestBidder();
             
             // Transfer bid token to the auction contract 
-            ERC20TransferHelper.safeTransferFrom(bidToken, msg.sender, address(this), bid);
+            TransferHelper.safeTransferFrom(bidToken, msg.sender, address(this), bid);
 
             // Update highest bidder and highest bid
             updateHighestBid(msg.sender, bid);
@@ -167,9 +172,9 @@ contract SealedBidAuction is ERC721Holder, Ownable {
         if(highestBid >= reservePrice) {
             // Transfer auctionAsset to the highest bidder
             IERC721(auctionAsset).safeTransferFrom(address(this), highestBidder, auctionAssetID);
-
-            // transfer the bidTokens to the Auction owner
-            ERC20TransferHelper.safeTransferFrom(bidToken, address(this), owner(), highestBid);
+            
+            // transfer bid Tokens to the Auction owner
+            TransferHelper.safeTransfer(bidToken, owner(), highestBid);
 
             currentPhase = AuctionPhase.FINALIZED;
             
@@ -206,6 +211,6 @@ contract SealedBidAuction is ERC721Holder, Ownable {
     }
 
     function refundHighestBidder() internal {
-        ERC20TransferHelper.safeTransferFrom(bidToken, address(this), highestBidder, highestBid);
+        TransferHelper.safeTransfer(bidToken, highestBidder, highestBid);
     }
 }
