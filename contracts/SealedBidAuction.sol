@@ -39,31 +39,27 @@ contract SealedBidAuction is ERC721Holder, Ownable {
     }
 
     // Events
-    
     event NewHighestBid(address highestBidder, uint256 highestBid, address oldHighestBidder, uint256 oldHighestBid);
     event Finalized(address indexed caller, address indexed winner, uint256 indexed winningBid);
     event Cancelled(address indexed caller);
 
     // Immutable Auction Parameters
     address public immutable bidToken;
-
     address public immutable auctionAsset;
     uint256 public immutable auctionAssetID;
-
     uint256 public immutable commitPhaseDuration;
     uint256 public immutable revealPhaseDuration;
     uint256 public immutable reservePrice;
 
-    mapping(bytes32 => bool) public commitments;
-
     address public highestBidder = address(0);
     uint256 public highestBid = 0;
-
     uint256 public commitPhaseEnd;
     uint256 public revealPhaseEnd;
 
     // All auctions start inactive
     AuctionPhase public currentPhase = AuctionPhase.INACTIVE;
+
+    mapping(bytes32 => bool) public commitments;
 
     constructor(
         address admin,

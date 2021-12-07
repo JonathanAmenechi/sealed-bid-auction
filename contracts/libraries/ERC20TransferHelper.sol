@@ -10,7 +10,7 @@ library ERC20TransferHelper {
     function safeTransferFrom(address asset, address from, address to, uint256 amount) internal {
         require(
             IERC20(asset).transferFrom(from, to, amount),
-            "ERC20 Safe transfer from failed"
+            "TransferHelper::STF"
         );
     }
 }

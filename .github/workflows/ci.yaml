@@ -33,6 +33,5 @@ jobs:
         run: yarn test
 
 env:
-    MNEMONIC: "we need a mnemonic phrase so that continuous integration will not fail"
+    MNEMONIC: "test test test test test test test test test test test test"
     INFURA_API_KEY: "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-    MATICVIGIL_API_KEY: "zzzzzzzzzzzzzzzzzzzzzzzzzzzz"

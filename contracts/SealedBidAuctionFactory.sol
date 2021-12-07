@@ -63,7 +63,6 @@ contract SealedBidAuctionFactory is ERC721Holder {
 
         // Transfer auctionAsset to the Auction
         IERC721(auctionAsset).safeTransferFrom(msg.sender, auction, auctionAssetID);
-        
         emit AuctionDeployed(msg.sender, auction);
     }
 
@@ -145,8 +144,6 @@ contract SealedBidAuctionFactory is ERC721Holder {
             revealDuration, 
             reservePrice
         );
-
         return Create2.computeAddress(salt, keccak256(creationCode), deployer);
-
     }
 }
