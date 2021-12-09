@@ -8,25 +8,24 @@ import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721H
 import { TransferHelper } from "./libraries/TransferHelper.sol";
 
 
-/**
- * @title Sealed Bid Auction
- * @notice Smart contract that allows a user to start a first price sealed bid auction(aka blind auction) 
- * for a single ERC721 asset. Inspired by the ENS RegistrarController.
- *
- * The contract maintains custody of the Asset until the auction is Finalized, or Cancelled.
- * 
- * It works using a commit-reveal scheme in which bidders commit hashed bids in the COMMIT phase
- * and reveal their bids during the REVEAL phase. 
- * 
- * The Auction owner has the following privileges:
- * 1) Can start the auction with `startAuction`
- * 2) Can cancel the auction and withdraw the asset if the auction hasn't started or the reserve price isn't met
- *
- * Apart from the above, this contract intends to be as trustless as possible:
- * 1) Auction parameters(commit duration, reveal duration, reserve price) are set on deployment and are immutable
- * 2) Anyone can advance the auction to the next phase once the auction has started
- */
-
+///
+/// @title Sealed Bid Auction
+/// @notice Smart contract that allows a user to start a first price sealed bid auction(aka blind auction) 
+/// for a single ERC721 asset. Inspired by the ENS RegistrarController.
+///
+/// The contract maintains custody of the Asset until the auction is Finalized, or Cancelled.
+/// 
+/// It works using a commit-reveal scheme in which bidders commit hashed bids in the COMMIT phase
+/// and reveal their bids during the REVEAL phase. 
+/// 
+/// The Auction owner has the following privileges:
+/// 1) Can start the auction with `startAuction`
+/// 2) Can cancel the auction and withdraw the asset if the auction hasn't started or the reserve price isn't met
+///
+/// Apart from the above, this contract intends to be as trustless as possible:
+/// 1) Auction parameters(commit duration, reveal duration, reserve price) are set on deployment and are immutable
+/// 2) Anyone can advance the auction to the next phase once the auction has started
+///
 contract SealedBidAuction is ERC721Holder, Ownable {
 
     enum AuctionPhase {
@@ -79,20 +78,16 @@ contract SealedBidAuction is ERC721Holder, Ownable {
         transferOwnership(admin);
     }
 
-    /**
-    * Starts an auction
-    * Moves the auction to the COMMIT phase
-    * Only the Auction owner can start the auction
-    */
+    /// @notice Starts an auction
+    /// @notice Moves the auction to the COMMIT phase
+    /// @notice Only the Auction owner can start the auction
     function startAuction() public onlyOwner {
         require(currentPhase == AuctionPhase.INACTIVE, "Auction::auction already in progress");
         commitPhaseEnd = block.timestamp + commitPhaseDuration;
         currentPhase = AuctionPhase.COMMIT;
     }
 
-    /**
-    * Starts the reveal phase of the auction
-    */
+    /// @notice Starts the reveal phase of the auction
     function startRevealPhase() public {
         require(currentPhase == AuctionPhase.COMMIT, "Auction::must be in commit phase");
         require(block.timestamp > commitPhaseEnd, "Auction::commit phase has not ended");
@@ -101,15 +96,17 @@ contract SealedBidAuction is ERC721Holder, Ownable {
         currentPhase = AuctionPhase.REVEAL;
     }
 
-    /**
-    * Creates a commitment to bid at a certain price
-    */
+    /// @notice Creates a commitment to bid at a certain price
+    /// @param commitment - A hash of the bidder, bidAmount and a secret
     function commit(bytes32 commitment) public {
         require(currentPhase == AuctionPhase.COMMIT, "Auction::must be in commit phase");
         require(block.timestamp <= commitPhaseEnd, "Auction::commit phase has ended");
         commitments[commitment] = true;
     } 
 
+    /// @notice Reveals a previously placed bid
+    /// @param bid    - The Bid amount
+    /// @param secret - The Secret
     function reveal(uint256 bid, bytes32 secret) public {
         require(currentPhase == AuctionPhase.REVEAL, "Auction::must be in reveal phase");
         require(block.timestamp <= revealPhaseEnd, "Auction::reveal phase has ended");
@@ -156,15 +153,16 @@ contract SealedBidAuction is ERC721Holder, Ownable {
         }
     }
 
+    /// @notice Creates a commitment hash
+    /// @param bidder - The address placing the bid
+    /// @param bid    - The bid to be placed
+    /// @param secret - The secret
     function createCommitment(address bidder, uint256 bid, bytes32 secret) public pure returns (bytes32) {
         return keccak256(abi.encodePacked(bidder, bid, secret));
     }
 
-    /**
-    * Ends the auction and transfers the asset to the highest revealed bid.
-    * If the reserve price isn't met, the auction is set to RESERVE_NOT_MET.
-    * Can be called by anyone
-    */
+    /// @notice Ends the auction and transfers the asset to the winner of the auction
+    /// @notice If the reserve price isn't met, the auction is set to RESERVE_NOT_MET
     function finalize() public {
         require(currentPhase == AuctionPhase.REVEAL, "Auction::must be in reveal phase");
         require(block.timestamp > revealPhaseEnd, "Auction::reveal phase has not ended");
@@ -186,10 +184,8 @@ contract SealedBidAuction is ERC721Holder, Ownable {
         }
     }
 
-    /**
-    * Cancels the auction and returns the asset to the auction owner
-    * Can only be called if an auction is in the INACTIVE or RESERVE_NOT_MET phases
-    */
+    /// @notice Cancels the auction and returns the asset to the auction owner
+    /// @notice Can only be called if an auction is in the INACTIVE or RESERVE_NOT_MET phases
     function cancelAuction() public onlyOwner {
         require(
             currentPhase == AuctionPhase.INACTIVE 
