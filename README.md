@@ -5,7 +5,7 @@ Note: WIP
 
 ### Description
 
-Implements a [sealed bid auction](https://en.wikipedia.org/wiki/First-price_sealed-bid_auction) contract and factory for a single ERC721 Asset. Inspired by the ENS RegistrarController.
+Implements a [First price sealed bid auction](https://en.wikipedia.org/wiki/First-price_sealed-bid_auction) contract and factory for a single ERC721 Asset. Inspired by the ENS RegistrarController.
 
 Works using a commit-reveal scheme in which bidders commit hashed bids in the COMMIT phase and reveal their bids during the REVEAL phase.
 
