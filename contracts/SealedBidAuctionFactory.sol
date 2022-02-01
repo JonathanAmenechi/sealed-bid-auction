@@ -8,18 +8,23 @@ import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721H
 import { SealedBidAuction } from "./SealedBidAuction.sol";
 
 
-/**
-* SealedBidAuctionFactory 
-*/
+/// @title SealedBidAuctionFactory
+/// @notice Creates new sealed bid auctions
 contract SealedBidAuctionFactory is ERC721Holder {
     uint256 public constant MIN_DURATION = 1 hours;
     uint256 public constant MAX_DURATION = 1 weeks;
 
     uint256 public nonce = 0;
 
-    // Events
     event AuctionDeployed(address indexed deployer, address indexed auction);
 
+    /// @notice Deploys a new auction
+    /// @param bidToken       -
+    /// @param auctionAsset   -
+    /// @param auctionAssetID -
+    /// @param commitDuration -
+    /// @param revealDuration -
+    /// @param reservePrice   -
     function deployAuction(
         address bidToken, 
         address auctionAsset, 

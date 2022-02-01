@@ -3,9 +3,9 @@
 pragma solidity ^0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "hardhat/console.sol";
 
-// v3-periphery: https://github.com/Uniswap/v3-periphery/blob/main/contracts/libraries/TransferHelper.sol
+/// @title TransferHelper
+/// @author Uniswap: https://github.com/Uniswap/v3-periphery/blob/main/contracts/libraries/TransferHelper.sol
 library TransferHelper {
 
     /// @notice Transfers tokens from the targeted address to the given destination
@@ -25,7 +25,7 @@ library TransferHelper {
         require(success && (data.length == 0 || abi.decode(data, (bool))), "TransferHelper::STF");
     }
 
-        /// @notice Transfers tokens from msg.sender to a recipient
+    /// @notice Transfers tokens from msg.sender to a recipient
     /// @dev Errors with ST if transfer fails
     /// @param token The contract address of the token which will be transferred
     /// @param to The recipient of the transfer

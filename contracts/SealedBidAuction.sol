@@ -8,23 +8,10 @@ import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721H
 import { TransferHelper } from "./libraries/TransferHelper.sol";
 
 
-///
 /// @title Sealed Bid Auction
 /// @notice Smart contract that allows a user to start a first price sealed bid auction(aka blind auction) 
 /// for a single ERC721 asset. Inspired by the ENS RegistrarController.
-///
 /// The contract maintains custody of the Asset until the auction is Finalized, or Cancelled.
-/// 
-/// It works using a commit-reveal scheme in which bidders commit hashed bids in the COMMIT phase
-/// and reveal their bids during the REVEAL phase. 
-/// 
-/// The Auction owner has the following privileges:
-/// 1) Can start the auction with `startAuction`
-/// 2) Can cancel the auction and withdraw the asset if the auction hasn't started or the reserve price isn't met
-///
-/// Apart from the above, this contract intends to be as trustless as possible:
-/// 1) Auction parameters(commit duration, reveal duration, reserve price) are set on deployment and are immutable
-/// 2) Anyone can advance the auction to the next phase once the auction has started
 ///
 contract SealedBidAuction is ERC721Holder, Ownable {
 
@@ -37,17 +24,27 @@ contract SealedBidAuction is ERC721Holder, Ownable {
         CANCELED
     }
 
-    // Events
     event NewHighestBid(address highestBidder, uint256 highestBid, address oldHighestBidder, uint256 oldHighestBid);
     event Finalized(address indexed caller, address indexed winner, uint256 indexed winningBid);
     event Cancelled(address indexed caller);
 
-    // Immutable Auction Parameters
+    /// @dev ERC20 token address used to bid on this auction
     address public immutable bidToken;
+    
+    /// @dev ERC721 token address that is being auctioned
     address public immutable auctionAsset;
+    
+    /// @dev ERC721 token ID that is being auctioned
     uint256 public immutable auctionAssetID;
+    
+    /// @dev The duration of the commit phase
     uint256 public immutable commitPhaseDuration;
+    
+    /// @dev The duration of the reveal phase
     uint256 public immutable revealPhaseDuration;
+
+    /// @dev The minimum price that the auctionAsset can be sold for.
+    /// Can be 0.
     uint256 public immutable reservePrice;
 
     address public highestBidder = address(0);
@@ -55,9 +52,10 @@ contract SealedBidAuction is ERC721Holder, Ownable {
     uint256 public commitPhaseEnd;
     uint256 public revealPhaseEnd;
 
-    // All auctions start inactive
+    /// @dev starting auction phase is always INACTIVE
     AuctionPhase public currentPhase = AuctionPhase.INACTIVE;
 
+    /// @dev Mapping of received commitments
     mapping(bytes32 => bool) public commitments;
 
     constructor(
@@ -157,8 +155,8 @@ contract SealedBidAuction is ERC721Holder, Ownable {
     /// @param bidder - The address placing the bid
     /// @param bid    - The bid to be placed
     /// @param secret - The secret
-    function createCommitment(address bidder, uint256 bid, bytes32 secret) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(bidder, bid, secret));
+    function createCommitment(address bidder, uint256 bid, bytes32 secret) public pure returns (bytes32 commitment) {
+        commitment= keccak256(abi.encodePacked(bidder, bid, secret));
     }
 
     /// @notice Ends the auction and transfers the asset to the winner of the auction
