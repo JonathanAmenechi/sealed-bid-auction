@@ -38,11 +38,15 @@ const setup = deployments.createFixture(async () => {
 
     // deploy auction
     const nonce = await factory.nonce();
+    const commitDuration = 3600;
+    const revealDuration = 3600;
+    const reservePrice = ethers.utils.parseEther("0.1");
+    
     const expectedAuctionAddress = await factory.connect(deployer).computeAuctionAddress(
-        factory.address, deployer.address, bidToken.address, testNFT.address, 0, 3600, 3600, 0, nonce);
-
+        factory.address, deployer.address, bidToken.address, testNFT.address, 0, commitDuration, revealDuration, reservePrice, nonce);
+    
     await( await factory.connect(deployer).deployAuction(
-        bidToken.address, testNFT.address, 0, 3600, 3600, 0)
+        bidToken.address, testNFT.address, 0, commitDuration, revealDuration, reservePrice)
     ).wait();
 
     const auction: SealedBidAuction = <SealedBidAuction>await ethers.getContractAt("SealedBidAuction", expectedAuctionAddress, deployer);
@@ -161,6 +165,17 @@ describe("Sealed Bid Auction tests", function () {
         ).to.be.revertedWith("TransferHelper::STF");
         
     });
+
+    it("should revert on invalid reveals", async function () {
+        const nonExistentBid = ethers.utils.parseEther("50000");
+        const nonexistentSecret = ethers.utils.randomBytes(32);
+        const bidder = (await hre.ethers.getSigners())[0];
+
+        // reverts since the commitment doesn't exist
+        await expect(
+            auction.connect(bidder).reveal(nonExistentBid, nonexistentSecret),
+        ).to.be.revertedWith("Auction::nonexistent commitment");
+    })
 
     it("should allow bidders reveal their bids", async function () {        
         // Reveal first bid
