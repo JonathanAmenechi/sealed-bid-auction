@@ -1,30 +1,30 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.10;
 
 import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+
 import { SealedBidAuction } from "./SealedBidAuction.sol";
 
 
 /// @title SealedBidAuctionFactory
 /// @notice Creates new sealed bid auctions
 contract SealedBidAuctionFactory is ERC721Holder {
-    uint256 public constant MIN_DURATION = 1 hours;
-    uint256 public constant MAX_DURATION = 1 weeks;
-
+    uint256 public immutable minDuration = 1 hours;
+    uint256 public immutable maxDuration = 1 weeks;
     uint256 public nonce = 0;
 
     event AuctionDeployed(address indexed deployer, address indexed auction);
 
     /// @notice Deploys a new auction
-    /// @param bidToken       -
-    /// @param auctionAsset   -
-    /// @param auctionAssetID -
-    /// @param commitDuration -
-    /// @param revealDuration -
-    /// @param reservePrice   -
+    /// @param bidToken       - Token used to bid on the auction
+    /// @param auctionAsset   - Asset being auctioned off
+    /// @param auctionAssetID - ERC721 tokenID of the Asset being auctioned off
+    /// @param commitDuration - Length of the COMMIT phase
+    /// @param revealDuration - Length of the REVEAL phase
+    /// @param reservePrice   - Price at which an auction c
     function deployAuction(
         address bidToken, 
         address auctionAsset, 
@@ -33,15 +33,11 @@ contract SealedBidAuctionFactory is ERC721Holder {
         uint256 revealDuration, 
         uint256 reservePrice
     ) external {
-        // Initial checks
-        require(bidToken != address(0), "AuctionFactory::bidToken must not be zero address");
-        require(auctionAsset != address(0), "AuctionFactory::auctionAsset must not be zero address");
-        
-        require(commitDuration >= MIN_DURATION, "AuctionFactory::commitDuration below min");
-        require(revealDuration >= MIN_DURATION, "AuctionFactory::revealDuration below min");
+        require(commitDuration >= minDuration, "AuctionFactory::commitDuration below min");
+        require(revealDuration >= minDuration, "AuctionFactory::revealDuration below min");
 
-        require(commitDuration <= MAX_DURATION, "AuctionFactory::commitDuration above max");
-        require(revealDuration <= MAX_DURATION, "AuctionFactory::revealDuration above max");
+        require(commitDuration <= maxDuration, "AuctionFactory::commitDuration above max");
+        require(revealDuration <= maxDuration, "AuctionFactory::revealDuration above max");
 
         bytes32 salt = generateSalt(
                 msg.sender, 
@@ -64,7 +60,10 @@ contract SealedBidAuctionFactory is ERC721Holder {
             reservePrice
         );
         address auction =  Create2.deploy(0, salt, creationCode);
-        nonce = nonce + 1;
+        
+        unchecked {
+            nonce += 1;
+        }
 
         // Transfer auctionAsset to the Auction
         IERC721(auctionAsset).safeTransferFrom(msg.sender, auction, auctionAssetID);

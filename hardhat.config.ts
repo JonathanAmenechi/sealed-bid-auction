@@ -4,7 +4,6 @@ import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 
-
 import { resolve } from "path";
 
 import { config as dotenvConfig } from "dotenv";
@@ -48,11 +47,6 @@ function getChainConfig(network: keyof typeof chainIds): NetworkUserConfig {
 
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
-  gasReporter: {
-    currency: "USD",
-    excludeContracts: ["TestToken", "Test721"],
-    src: "./contracts",
-  },
   networks: {
     hardhat: {
       accounts: {
@@ -73,20 +67,33 @@ const config: HardhatUserConfig = {
     tests: "./test",
   },
   solidity: {
-    version: "0.8.0",
-    settings: {
-      metadata: {
-        // Not including the metadata hash
-        // https://github.com/paulrberg/solidity-template/issues/31
-        bytecodeHash: "none",
-      },
-      // Disable the optimizer when debugging
-      // https://hardhat.org/hardhat-network/#solidity-optimizer-support
-      optimizer: {
-        enabled: true,
-        runs: 200,
-      },
+    compilers: [
+      {
+        version: "0.8.10",
+        settings: {
+            // https://hardhat.org/hardhat-network/#solidity-optimizer-support
+            optimizer: {
+                enabled: true,
+                runs: 200,
+            },
+        },
     },
+    {
+        version: "0.8.0",
+        settings: {
+            // https://hardhat.org/hardhat-network/#solidity-optimizer-support
+            optimizer: {
+                enabled: true,
+                runs: 200,
+            },
+        },
+    },
+    ],
+  },
+  gasReporter: {
+    currency: "USD",
+    excludeContracts: ["TestToken", "Test721"],
+    src: "./contracts",
   },
   typechain: {
     outDir: "typechain",

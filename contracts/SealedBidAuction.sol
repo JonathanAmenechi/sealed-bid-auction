@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.10;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+
 import { TransferHelper } from "./libraries/TransferHelper.sol";
 
 
@@ -12,8 +14,7 @@ import { TransferHelper } from "./libraries/TransferHelper.sol";
 /// @notice Smart contract that allows a user to start a first price sealed bid auction(aka blind auction) 
 /// for a single ERC721 asset. Inspired by the ENS RegistrarController.
 /// The contract maintains custody of the Asset until the auction is Finalized, or Cancelled.
-///
-contract SealedBidAuction is ERC721Holder, Ownable {
+contract SealedBidAuction is ERC721Holder, ReentrancyGuard, Ownable {
 
     enum AuctionPhase {
         INACTIVE, 
@@ -105,7 +106,7 @@ contract SealedBidAuction is ERC721Holder, Ownable {
     /// @notice Reveals a previously placed bid
     /// @param bid    - The Bid amount
     /// @param secret - The Secret
-    function reveal(uint256 bid, bytes32 secret) public {
+    function reveal(uint256 bid, bytes32 secret) public nonReentrant {
         require(currentPhase == AuctionPhase.REVEAL, "Auction::must be in reveal phase");
         require(block.timestamp <= revealPhaseEnd, "Auction::reveal phase has ended");
 
@@ -114,37 +115,39 @@ contract SealedBidAuction is ERC721Holder, Ownable {
         require(commitments[commitment], "Auction::nonexistent commitment");
         require(bid >= reservePrice, "Auction::unmet reserve price");
 
-        address oldHighestBidder;
-        uint256 oldHighestBid;
-
-        // If first bid, update the highest bid and bidder
+        // First bid
         if(highestBidder == address(0)) {
-            oldHighestBidder = address(0);
-            oldHighestBid = 0;
-            
-            // Transfer bid token from the bidder to the auction contract 
-            TransferHelper.safeTransferFrom(bidToken, msg.sender, address(this), bid);
-
             // Update highest bidder and highest bid
-            updateHighestBid(msg.sender, bid);
+            highestBidder = msg.sender;
+            highestBid = bid;
 
-            emit NewHighestBid(msg.sender, bid, oldHighestBidder, oldHighestBid);
+            // Transfer bid token from the bidder to the auction contract 
+            TransferHelper.safeTransferFrom(bidToken, msg.sender, address(this), bid);            
+            
+            // Clear the commitment
+            delete commitments[commitment];
+
+            emit NewHighestBid(msg.sender, bid, address(0), 0);
             return;
         }
         
         // If current bid strictly > highest bid 
         if (bid > highestBid) {
-            oldHighestBidder = highestBidder;
-            oldHighestBid = highestBid;
+            address oldHighestBidder = highestBidder;
+            uint256 oldHighestBid = highestBid;
             
             // Refund previous highest bidder
-            refundHighestBidder();
+            TransferHelper.safeTransfer(bidToken, highestBidder, highestBid);
             
             // Transfer bid token to the auction contract 
             TransferHelper.safeTransferFrom(bidToken, msg.sender, address(this), bid);
 
             // Update highest bidder and highest bid
-            updateHighestBid(msg.sender, bid);
+            highestBidder = msg.sender;
+            highestBid = bid;
+
+            // Clear the commitment
+            delete commitments[commitment];
 
             emit NewHighestBid(msg.sender, bid, oldHighestBidder, oldHighestBid);
             return;
@@ -158,22 +161,21 @@ contract SealedBidAuction is ERC721Holder, Ownable {
     function createCommitment(address bidder, uint256 bid, bytes32 secret) public pure returns (bytes32 commitment) {
         commitment= keccak256(abi.encodePacked(bidder, bid, secret));
     }
-
     /// @notice Ends the auction and transfers the asset to the winner of the auction
     /// @notice If the reserve price isn't met, the auction is set to RESERVE_NOT_MET
-    function finalize() public {
+    function finalize() public nonReentrant {
         require(currentPhase == AuctionPhase.REVEAL, "Auction::must be in reveal phase");
         require(block.timestamp > revealPhaseEnd, "Auction::reveal phase has not ended");
         
         if(highestBid >= reservePrice) {
+            currentPhase = AuctionPhase.FINALIZED;
+            
             // Transfer auctionAsset to the highest bidder
             IERC721(auctionAsset).safeTransferFrom(address(this), highestBidder, auctionAssetID);
             
-            // transfer bid Tokens to the Auction owner
+            // transfer the auction proceeds to the Auction owner
             TransferHelper.safeTransfer(bidToken, owner(), highestBid);
 
-            currentPhase = AuctionPhase.FINALIZED;
-            
             emit Finalized(msg.sender, highestBidder, highestBid);
         } else {
 
@@ -197,14 +199,5 @@ contract SealedBidAuction is ERC721Holder, Ownable {
         
         // transfer auctionAsset to owner
         IERC721(auctionAsset).safeTransferFrom(address(this), owner(), auctionAssetID);
-    }
-
-    function updateHighestBid(address bidder, uint256 bidAmount) internal {
-        highestBidder = bidder;
-        highestBid = bidAmount;
-    }
-
-    function refundHighestBidder() internal {
-        TransferHelper.safeTransfer(bidToken, highestBidder, highestBid);
     }
 }
