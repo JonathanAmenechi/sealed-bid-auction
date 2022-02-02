@@ -2,19 +2,20 @@
 
 pragma solidity 0.8.10;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+import { Ownable } from "./lib/Ownable.sol";
 
-import { TransferHelper } from "./libraries/TransferHelper.sol";
+import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
+import { ReentrancyGuard } from "solmate/utils/ReentrancyGuard.sol";
+
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC721, ERC721TokenReceiver } from "solmate/tokens/ERC721.sol";
 
 
-/// @title Sealed Bid Auction
+/// @title Auction
 /// @notice Smart contract that allows a user to start a first price sealed bid auction(aka blind auction) 
 /// for a single ERC721 asset. Inspired by the ENS RegistrarController.
 /// The contract maintains custody of the Asset until the auction is Finalized, or Cancelled.
-contract SealedBidAuction is ERC721Holder, ReentrancyGuard, Ownable {
+contract Auction is ERC721TokenReceiver, ReentrancyGuard, Ownable {
 
     enum AuctionPhase {
         INACTIVE, 
@@ -25,12 +26,13 @@ contract SealedBidAuction is ERC721Holder, ReentrancyGuard, Ownable {
         CANCELED
     }
 
+    /// Events
     event NewHighestBid(address highestBidder, uint256 highestBid, address oldHighestBidder, uint256 oldHighestBid);
     event Finalized(address indexed caller, address indexed winner, uint256 indexed winningBid);
     event Cancelled(address indexed caller);
 
     /// @dev ERC20 token address used to bid on this auction
-    address public immutable bidToken;
+    ERC20 public immutable bidToken;
     
     /// @dev ERC721 token address that is being auctioned
     address public immutable auctionAsset;
@@ -45,7 +47,7 @@ contract SealedBidAuction is ERC721Holder, ReentrancyGuard, Ownable {
     uint256 public immutable revealPhaseDuration;
 
     /// @dev The minimum price that the auctionAsset can be sold for.
-    /// Can be 0.
+    /// Can be set to 0.
     uint256 public immutable reservePrice;
 
     address public highestBidder = address(0);
@@ -67,8 +69,8 @@ contract SealedBidAuction is ERC721Holder, ReentrancyGuard, Ownable {
         uint256 commitPhaseDuration_, 
         uint256 revealPhaseDuration_, 
         uint256 reservePrice_
-    ) ERC721Holder() Ownable() {
-        bidToken = bidToken_;
+    ) ERC721TokenReceiver() Ownable() {
+        bidToken = ERC20(bidToken_);
         auctionAsset = asset_;
         auctionAssetID = assetID_;
         commitPhaseDuration = commitPhaseDuration_;
@@ -122,7 +124,7 @@ contract SealedBidAuction is ERC721Holder, ReentrancyGuard, Ownable {
             highestBid = bid;
 
             // Transfer bid token from the bidder to the auction contract 
-            TransferHelper.safeTransferFrom(bidToken, msg.sender, address(this), bid);            
+            SafeTransferLib.safeTransferFrom(bidToken, msg.sender, address(this), bid);            
             
             // Clear the commitment
             delete commitments[commitment];
@@ -137,10 +139,10 @@ contract SealedBidAuction is ERC721Holder, ReentrancyGuard, Ownable {
             uint256 oldHighestBid = highestBid;
             
             // Refund previous highest bidder
-            TransferHelper.safeTransfer(bidToken, highestBidder, highestBid);
+            SafeTransferLib.safeTransfer(bidToken, highestBidder, highestBid);
             
             // Transfer bid token to the auction contract 
-            TransferHelper.safeTransferFrom(bidToken, msg.sender, address(this), bid);
+            SafeTransferLib.safeTransferFrom(bidToken, msg.sender, address(this), bid);
 
             // Update highest bidder and highest bid
             highestBidder = msg.sender;
@@ -171,10 +173,10 @@ contract SealedBidAuction is ERC721Holder, ReentrancyGuard, Ownable {
             currentPhase = AuctionPhase.FINALIZED;
             
             // Transfer auctionAsset to the highest bidder
-            IERC721(auctionAsset).safeTransferFrom(address(this), highestBidder, auctionAssetID);
+            ERC721(auctionAsset).safeTransferFrom(address(this), highestBidder, auctionAssetID);
             
             // transfer the auction proceeds to the Auction owner
-            TransferHelper.safeTransfer(bidToken, owner(), highestBid);
+            SafeTransferLib.safeTransfer(bidToken, owner(), highestBid);
 
             emit Finalized(msg.sender, highestBidder, highestBid);
         } else {
@@ -198,6 +200,15 @@ contract SealedBidAuction is ERC721Holder, ReentrancyGuard, Ownable {
         currentPhase = AuctionPhase.CANCELED;
         
         // transfer auctionAsset to owner
-        IERC721(auctionAsset).safeTransferFrom(address(this), owner(), auctionAssetID);
+        ERC721(auctionAsset).safeTransferFrom(address(this), owner(), auctionAssetID);
+    }
+
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes memory
+    ) public virtual override returns (bytes4) {
+        return this.onERC721Received.selector;
     }
 }

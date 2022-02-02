@@ -7,31 +7,19 @@ on:
     branches: "*"
 
 jobs:
-  test-contracts:
+  check:
+    name: Sealed Bid Auction Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
         with:
-          persist-credentials: false
+          submodules: recursive
 
-      - name: Install Node
-        uses: actions/setup-node@v1
+      - name: Install Foundry
+        uses: onbjerg/foundry-toolchain@v1
         with:
-          node-version: 16
+          version: nightly
 
-      - name: Dependencies
-        run: yarn
-        working-directory: ./
+      - name: Run tests
+        run: forge test -vvv
 
-      - name: Typechain
-        run: yarn typechain
-        working-directory: ./
-
-      - name: Tests
-        working-directory: ./
-        run: yarn test
-
-env:
-    MNEMONIC: "test test test test test test test test test test test test"
-    INFURA_API_KEY: "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"

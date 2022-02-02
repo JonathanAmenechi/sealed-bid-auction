@@ -1,0 +1,9 @@
+[default]
+src = 'src'
+out = 'artifacts'
+libs = ['lib']
+remappings = ['ds-test/=lib/ds-test/src/']
+optimizer = true
+optimizer_runs = 1000
+
+# See more config options https://github.com/gakonst/foundry/tree/master/config

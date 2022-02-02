@@ -2,16 +2,15 @@
 
 pragma solidity 0.8.10;
 
-import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
-import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import { ERC721Holder } from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+import { ERC721, ERC721TokenReceiver } from "solmate/tokens/ERC721.sol";
 
-import { SealedBidAuction } from "./SealedBidAuction.sol";
+import { Create2 } from "./lib/Create2.sol";
+import { Auction } from "./Auction.sol";
 
 
-/// @title SealedBidAuctionFactory
-/// @notice Creates new sealed bid auctions
-contract SealedBidAuctionFactory is ERC721Holder {
+/// @title AuctionFactory
+/// @notice Creates new auctions
+contract AuctionFactory is ERC721TokenReceiver {
     uint256 public immutable minDuration = 1 hours;
     uint256 public immutable maxDuration = 1 weeks;
     uint256 public nonce = 0;
@@ -32,7 +31,7 @@ contract SealedBidAuctionFactory is ERC721Holder {
         uint256 commitDuration, 
         uint256 revealDuration, 
         uint256 reservePrice
-    ) external {
+    ) external returns (address auction) {
         require(commitDuration >= minDuration, "AuctionFactory::commitDuration below min");
         require(revealDuration >= minDuration, "AuctionFactory::revealDuration below min");
 
@@ -59,14 +58,15 @@ contract SealedBidAuctionFactory is ERC721Holder {
             revealDuration, 
             reservePrice
         );
-        address auction =  Create2.deploy(0, salt, creationCode);
-        
+
         unchecked {
             nonce += 1;
         }
 
+        auction = Create2.deploy(0, salt, creationCode);
+        
         // Transfer auctionAsset to the Auction
-        IERC721(auctionAsset).safeTransferFrom(msg.sender, auction, auctionAssetID);
+        ERC721(auctionAsset).safeTransferFrom(msg.sender, auction, auctionAssetID);
         emit AuctionDeployed(msg.sender, auction);
     }
 
@@ -80,7 +80,7 @@ contract SealedBidAuctionFactory is ERC721Holder {
         uint256 reservePrice
     ) internal pure returns(bytes memory) {
         return abi.encodePacked(
-            type(SealedBidAuction).creationCode, 
+            type(Auction).creationCode, 
             abi.encode(
                 caller, 
                 bidToken, 
@@ -149,5 +149,14 @@ contract SealedBidAuctionFactory is ERC721Holder {
             reservePrice
         );
         return Create2.computeAddress(salt, keccak256(creationCode), deployer);
+    }
+
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes memory
+    ) public virtual override returns (bytes4) {
+        return this.onERC721Received.selector;
     }
 }
