@@ -33,3 +33,7 @@ Compile the contracts with `make build`
 ### Tests
 
 Test with `make test`
+
+### Snapshots
+
+Generate gas snapshots with `make snapshot`
