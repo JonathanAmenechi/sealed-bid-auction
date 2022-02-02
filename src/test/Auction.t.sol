@@ -10,10 +10,6 @@ import { MockERC721 } from "./mocks/MockERC721.sol";
 import { Auction } from "../Auction.sol";
 import { AuctionFactory } from "../AuctionFactory.sol";
 
-// TODO: remove this 
-import "./utils/console.sol";
-
-
 contract AuctionTest is DSTest {
     Hevm constant hevm = Hevm(HEVM_ADDRESS);
 
