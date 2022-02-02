@@ -163,9 +163,10 @@ contract Auction is ERC721TokenReceiver, ReentrancyGuard, Ownable {
     function createCommitment(address bidder, uint256 bid, bytes32 secret) public pure returns (bytes32 commitment) {
         commitment= keccak256(abi.encodePacked(bidder, bid, secret));
     }
+
     /// @notice Ends the auction and transfers the asset to the winner of the auction
     /// @notice If the reserve price isn't met, the auction is set to RESERVE_NOT_MET
-    function finalize() public nonReentrant {
+    function finalizeAuction() public nonReentrant {
         require(currentPhase == AuctionPhase.REVEAL, "Auction::must be in reveal phase");
         require(block.timestamp > revealPhaseEnd, "Auction::reveal phase has not ended");
         

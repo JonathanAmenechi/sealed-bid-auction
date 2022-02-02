@@ -166,10 +166,10 @@ contract AuctionTest is DSTest {
 
         _reveal(bidderA, 1 ether, bytes32("aDc"));
 
-        auction.finalize();
+        auction.finalizeAuction();
     }
 
-    function testFinalize() public {
+    function testFinalizeAuction() public {
         // start the auction
         auction.startAuction();
         _commit(bidderA, 1 ether, bytes32("aDc"));
@@ -184,7 +184,7 @@ contract AuctionTest is DSTest {
 
         // Finalize the auction, sending bid tokens to the auction deployer 
         // and the auction asset to the winning bidder
-        auction.finalize();
+        auction.finalizeAuction();
 
         assertEq(uint256(auction.currentPhase()), 3);
         
